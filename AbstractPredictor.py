@@ -71,7 +71,7 @@ class AbstractPredictor:
                 if len(token) > 1:
                     long_words.append(token) # removing short words
             preprocessed_text.append(" ".join(long_words).strip())
-        return preprocessed_text
+        return preprocessed_text,long_words
 
     def pre_arrange_text_data(self,data):
         preprocessed_text = np.array(data['cleaned_text'])

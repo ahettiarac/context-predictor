@@ -1,7 +1,10 @@
 from tensorflow.keras.layers import Input, LSTM, Embedding, Dense, Concatenate, TimeDistributed
 from tensorflow.keras.models import Model
 from AttentionLayer import AttentionLayer
-from tensorflow.keras.callbacks import EarlyStopping
+from tensorflow.keras.callbacks import EarlyStopping,TensorBoard
+from tensorboard.plugins import projector
+import tensorflow as tf
+import os
 import numpy as np
 from keras import backend as K
 K.clear_session()
@@ -51,14 +54,26 @@ class PredictorRNN:
         self.model = Model([encoder_input, decoder_input], decoder_output)
         self.model.compile(optimizer='rmsprop', loss='spare_categorical_crossentropy')
         self.model.summary()
-        return 
 
-    def train_model(self, x_train, x_test, y_train, y_test):
+    def train_model(self, x_train, x_test, y_train, y_test,word_dict):
         early_stopping = EarlyStopping(monitor='val_loss', mode='min', verbose=1, patience=5)
+        tensorboard = TensorBoard(log_dir='logs',histogram_freq=10,embeddings_freq=10)
         history = self.model.fit([x_train, y_train[:,:-1]], y_train.reshape(y_train.shape[0], y_train.shape[1], 1)[:,1:], epochs=50, 
-                                callbacks=[early_stopping],batch_size=128,
+                                callbacks=[early_stopping,tensorboard],batch_size=128,
                                 validation_data=([x_test, y_test[:, :-1]], y_test.reshape(y_test.shape[0], y_test.shape[1], 1)[:,1:]))
         self.model.save_weights('model_weights.h5')
+        logs_dir = 'logs'    
+        with open(os.path.join(logs_dir, 'metadata.csv'),"w") as f:
+            for word in word_dict:
+                f.write("{}\n".format(word))
+        weights = tf.Variable(self.model.layers[1].get_weights()[0][1:])
+        checkpoint = tf.train.Checkpoint(embedding=weights)
+        checkpoint.save(os.path.join(logs_dir,"embedding.ckpt"))        
+        config = projector.ProjectorConfig()
+        embedding = config.embedding.add()
+        embedding.tensor_name = "embedding/.ATTRIBUTES/VARIABLE_VALUE"
+        embedding.metadata_path = "metadata.csv"
+        projector.visualize_embeddings(logs_dir, "embedding.ckpt")
 
     def get_inference_model(self,max_text_length,train=False):
         if train:
@@ -96,21 +111,7 @@ class PredictorRNN:
             target_seq = np.zeros((1,1))
             target_seq[0,0] = sampled_token_index
             en_h,en_c = h,c
-        return decoded_sentence
-
-    def seq2summary(self,input_seq,target_word_index):
-        sentence = ''
-        for word in input_seq:
-            if ((word != 0 and word != target_word_index['sostock']) and word != target_word_index['eostock']):
-                sentence = sentence + target_word_index[word] + ' '
-        return sentence
-
-    def seq2text(self,input_seq,target_summary_index):
-        sentence = ''
-        for word in input_seq:
-            if (word != 0):
-                sentence = sentence + target_summary_index[word] + ' '
-        return sentence                   
+        return decoded_sentence                  
 
 
 

@@ -5,8 +5,8 @@ import pandas as pd
 import numpy as np
 
 abstract_model = AbstractPredictor("C:\\Users\\ahettiarac\\csv_data\\Reviews\\Reviews.csv")
-preprocessed_text = abstract_model.preprocess_text("Text")
-preprocessed_summary = abstract_model.preprocess_text("Summary")
+preprocessed_text,word_dict_text = abstract_model.preprocess_text("Text")
+preprocessed_summary,word_dict_summary = abstract_model.preprocess_text("Summary")
 
 abstract_model.data['cleaned_text'] = preprocessed_text
 abstract_model.data['cleaned_summary'] = preprocessed_summary
@@ -41,3 +41,4 @@ print(y_test.shape)
 
 model = PredictorRNN(abstract_model.max_text_length, abstract_model.max_summary_length)
 model.build_model()
+model.train_model(x_train, x_test, y_train, y_test, word_dict_summary)
