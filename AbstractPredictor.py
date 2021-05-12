@@ -105,7 +105,7 @@ class AbstractPredictor:
         y_test_seq = y_tokenizer.texts_to_sequences(y_test)
         y_train = pad_sequences(y_train_seq,maxlen=self.max_summary_length,padding='post')
         y_test = pad_sequences(y_test_seq,maxlen=self.max_summary_length,padding='post')
-        self.vocab_size = x_tokenizer.num_words+1
+        self.vocab_size = y_tokenizer.num_words + 1
         self.reverse_target_word_index = y_tokenizer.index_word
         self.reverse_source_word_index = x_tokenizer.index_word
         x_tokenizer_json = x_tokenizer.to_json()

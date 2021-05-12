@@ -34,10 +34,12 @@ class PredictorRNN:
           HP_DROPOUT: 0.4,
           HP_OPTIMIZER: 'rmsprop',
     }
+    vocab_size = 0
 
-    def __init__(self,input_len,output_len):
+    def __init__(self,input_len,output_len,vocab_size):
         self.input_size = input_len
-        self.output_size = output_len  
+        self.output_size = output_len
+        self.vocab_size = vocab_size  
 
     def build_model(self):
         self.encoder_input = Input(shape=(self.input_size,))
@@ -59,7 +61,7 @@ class PredictorRNN:
         attn_output, attn_state = self.attn_layer([self.encoder_output, decoder_outputs])
         decoder_concat_input = Concatenate(axis=-1, name='concat_layer')([decoder_outputs, attn_output])
 
-        self.decoder_dense = TimeDistributed(Dense(self.output_size, activation='softmax'))
+        self.decoder_dense = TimeDistributed(Dense(self.vocab_size, activation='softmax'))
         decoder_output = self.decoder_dense(decoder_concat_input)
 
         self.model = Model([self.encoder_input, self.decoder_input], decoder_output)
