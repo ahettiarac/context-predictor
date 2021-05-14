@@ -39,6 +39,6 @@ print(x_test.shape)
 print("==============")
 print(y_test.shape)
 
-model = PredictorRNN(abstract_model.max_text_length, abstract_model.max_summary_length, abstract_model.vocab_size)
+model = PredictorRNN(abstract_model.max_text_length, abstract_model.max_summary_length, abstract_model.vocab_size,abstract_model.x_vocab_size)
 #model.build_model()
 model.train_model(x_train, x_test, y_train, y_test, word_dict_summary)

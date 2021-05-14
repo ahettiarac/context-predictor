@@ -44,8 +44,10 @@ class AbstractPredictor:
     max_text_length = 30
     max_summary_length = 8
     vocab_size = 0
+    x_vocab_size = 0
     reverse_target_word_index = None
-    reverse_source_word_index = None                       
+    reverse_source_word_index = None 
+    stop_words = set(stopwords.words('english'))                      
 
     def __init__(self, csvPath):
         self.data = pd.read_csv(csvPath, nrows=100000)
@@ -55,7 +57,6 @@ class AbstractPredictor:
 
     def preprocess_text(self, column_name):
         preprocessed_text = []
-        stop_words = set(stopwords.words('english'))
         for text in self.data[column_name]:
             cleaned_text = text.lower() # convert to lower case text
             cleaned_text = BeautifulSoup(cleaned_text, "lxml").text # remove html tags from text
@@ -65,7 +66,7 @@ class AbstractPredictor:
             cleaned_text = re.sub(r"'s\b","",cleaned_text) #removing 's from text
             cleaned_text = re.sub("[^a-zA-Z]"," ", cleaned_text) # remove words in paranthesis
             cleaned_text = re.sub('[m]{2,}','mm', cleaned_text) # remove punctuations and special characters
-            tokens = [word for word in cleaned_text.split() if not word in stop_words]
+            tokens = [word for word in cleaned_text.split() if not word in self.stop_words]
             long_words = []
             for token in tokens:
                 if len(token) > 1:
@@ -96,6 +97,7 @@ class AbstractPredictor:
         x_test_seq = x_tokenizer.texts_to_sequences(x_test)
         x_train = pad_sequences(x_train_seq,maxlen=self.max_text_length,padding='post')
         x_test = pad_sequences(x_test_seq,maxlen=self.max_text_length,padding='post')
+        self.x_vocab_size = x_tokenizer.num_words + 1
         y_tokenizer = Tokenizer()
         y_tokenizer.fit_on_texts(list(y_train))
         vocab_size,rare_words_count = self.find_rare_word_count(y_tokenizer)
@@ -181,7 +183,7 @@ class AbstractPredictor:
 
     def get_input_seq(self,paragraph):
         preprocessed_text = ""
-        paragraph = text.lower() # convert to lower case text
+        paragraph = paragraph.lower() # convert to lower case text
         cleaned_text = BeautifulSoup(paragraph, "lxml").text # remove html tags from text
         paragraph = re.sub(r'\([^)]*\)', '', paragraph)
         paragraph = re.sub('"','',paragraph)
@@ -189,7 +191,7 @@ class AbstractPredictor:
         paragraph = re.sub(r"'s\b","",paragraph) #removing 's from text
         paragraph = re.sub("[^a-zA-Z]"," ", paragraph) # remove words in paranthesis
         paragraph = re.sub('[m]{2,}','mm', paragraph) # remove punctuations and special characters
-        tokens = [word for word in paragraph.split() if not word in stop_words]
+        tokens = [word for word in paragraph.split() if not word in self.stop_words]
         long_words = []
         for token in tokens:
             if len(token) > 1:
