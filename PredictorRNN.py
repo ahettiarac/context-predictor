@@ -31,7 +31,7 @@ class PredictorRNN:
     HP_OPTIMIZER = hp.HParam('optimizer',hp.Discrete(['adam','sgd','rmsprop','adadelta','adagrad']))
     METRIC_ACCURACY = 'accuracy'
     hparams = {
-          HP_DROPOUT: 0.4,
+          HP_DROPOUT: 0.5,
           HP_OPTIMIZER: 'rmsprop'
     }
     vocab_size = 0
@@ -46,17 +46,17 @@ class PredictorRNN:
     def build_model(self):
         self.encoder_input = Input(shape=(self.input_size,))
         encoder_embedding = Embedding(self.x_vocab_size, 100, trainable=True)(self.encoder_input)
-        encoder_lstm1 = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT], recurrent_dropout=self.hparams[self.HP_DROPOUT])
+        encoder_lstm1 = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT])
         encoder_output1, state_h1, state_c1 = encoder_lstm1(encoder_embedding)
-        encoder_lstm2 = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT], recurrent_dropout=self.hparams[self.HP_DROPOUT])
+        encoder_lstm2 = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT])
         encoder_output2, state_h2, state_c2 = encoder_lstm2(encoder_output1)
-        encoder_lstm3 = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT], recurrent_dropout=self.hparams[self.HP_DROPOUT])
+        encoder_lstm3 = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT])
         self.encoder_output, self.state_h, self.state_c = encoder_lstm3(encoder_output2)
 
         self.decoder_input = Input(shape=(None,))
         self.decoder_embedding_layer = Embedding(self.vocab_size, 100, trainable=True)
         decoder_embedding = self.decoder_embedding_layer(self.decoder_input)
-        self.decoder_lstm = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT], recurrent_dropout=self.hparams[self.HP_DROPOUT])
+        self.decoder_lstm = LSTM(300, return_sequences=True, return_state=True, dropout=self.hparams[self.HP_DROPOUT])
         decoder_outputs, decoder_fwd_state, decoder_backward_state = self.decoder_lstm(decoder_embedding,initial_state=[self.state_h, self.state_c])
 
         self.attn_layer = AttentionLayer(name='attention_layer')
@@ -93,14 +93,15 @@ class PredictorRNN:
                 checkpoint = tf.train.Checkpoint(embedding=weights)
                 checkpoint.save(os.path.join(logs_dir,"embedding.ckpt"))        
                 config = projector.ProjectorConfig()
-                embedding = config.embedding.add()
+                embedding = config.embeddings.add()
                 embedding.tensor_name = "embedding/.ATTRIBUTES/VARIABLE_VALUE"
                 embedding.metadata_path = "metadata.csv"
                 projector.visualize_embeddings(logs_dir, "embedding.ckpt")
 
     def get_inference_model(self,max_text_length,train=False):
-        if train:
-            self.model.load_weights('model_weights.h5')
+        if not train:
+            print("train not figured")
+            self.model.load_weights('model_weights_rmsprop_0.5.h5')
         encoder_model = Model(inputs=self.encoder_input,outputs=[self.encoder_output,self.state_h,self.state_c])
         decoder_state_input_h = Input(shape=(300,))
         decoder_state_input_c = Input(shape=(300,))
@@ -114,16 +115,16 @@ class PredictorRNN:
                             [decoder_output2] + [state_h2,state_c2])
         return encoder_model,decoder_model
 
-    def decode_sequence(self,input_seq,encoder_model,decoder_model,target_word_index,source_word_index,max_summary_length):
+    def decode_sequence(self,input_seq,encoder_model,decoder_model,target_word_index,max_summary_length,reverse_target_word_index):
         en_out,en_h,en_c = encoder_model.predict(input_seq)
         target_seq = np.zeros((1,1))
-        target_seq[0,0] = target_word_index['sostok']
+        target_seq[0,0] = target_word_index['sostock']
         stop_condition = False
         decoded_sentence = ''
         while not stop_condition:
             output_tokens,h,c = decoder_model.predict([target_seq]+[en_out,en_h,en_c])
             sampled_token_index = np.argmax(output_tokens[0, -1, :])
-            sampled_token = target_word_index[sampled_token_index]
+            sampled_token = reverse_target_word_index[sampled_token_index]
 
             if sampled_token != 'eostock':
                 decoded_sentence += ' '+sampled_token

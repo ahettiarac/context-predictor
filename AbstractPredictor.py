@@ -179,19 +179,20 @@ class AbstractPredictor:
         for word in input_seq:
             if (word != 0):
                 sentence = sentence + self.reverse_target_word_index[word] + ' '
-        return sentence     
+        return sentence      
 
     def get_input_seq(self,paragraph):
         preprocessed_text = ""
         paragraph = paragraph.lower() # convert to lower case text
         cleaned_text = BeautifulSoup(paragraph, "lxml").text # remove html tags from text
-        paragraph = re.sub(r'\([^)]*\)', '', paragraph)
+        paragraph = re.sub(r'\([^)]*\)', '', cleaned_text)
         paragraph = re.sub('"','',paragraph)
         paragraph = ' '.join([self.contraction_mapping[word] if word in self.contraction_mapping else word for word in paragraph.split(" ")]) #remove contractions
         paragraph = re.sub(r"'s\b","",paragraph) #removing 's from text
         paragraph = re.sub("[^a-zA-Z]"," ", paragraph) # remove words in paranthesis
         paragraph = re.sub('[m]{2,}','mm', paragraph) # remove punctuations and special characters
-        tokens = [word for word in paragraph.split() if not word in self.stop_words]
+        stop_words = set(stopwords.words('english'))
+        tokens = [word for word in paragraph.split() if not word in stop_words]
         long_words = []
         for token in tokens:
             if len(token) > 1:
@@ -199,9 +200,11 @@ class AbstractPredictor:
         preprocessed_text = " ".join(long_words).strip()
         short_text_list = []
         x_tokenizer,y_tokenizer = self.load_reverse_index()
-        x_seq = x_tokenizer.texts_to_sequences(short_text_list.append(preprocessed_text))
+        short_text_list.append(preprocessed_text)
+        print("short text length: {}".format(len(short_text_list)))
+        x_seq = x_tokenizer.texts_to_sequences(short_text_list)
         x_seq = pad_sequences(x_seq, maxlen=self.max_text_length,padding='post')
-        return x_seq    
+        return x_seq,y_tokenizer,x_tokenizer    
 
 
 
